@@ -1,0 +1,6 @@
+drwxr-xr-x    2 maps     cicsterm        256 Jan 02 2010  /home/maps/src/sh/hmd/sql
+-rw-r-----    1 maps     cicsterm       5340 Sep 03 2008  /home/maps/src/sh/hmd/上海市严重违规签发支票出票人名单（第三期）.txt
+-rw-r--r--    1 maps     cicsterm        742 Aug 31 2008  /home/maps/src/sh/hmd/sql/MA83CUSTOMINFO.sql
+-rw-r--r--    1 maps     cicsterm        682 Jul 31 2008  /home/maps/src/sh/hmd/sql/MA83PLCUSTOMINFO.sql
+-rw-r--r--    1 maps     cicsterm        500 Jul 14 2008  /home/maps/src/sh/hmd/sql/MA83TRANSINFO.sql
+-rwxr-xr-x    1 maps     cicsterm         84 Jan 02 2010  /home/maps/src/sh/hmd/sql/temp.txt

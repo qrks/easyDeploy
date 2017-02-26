@@ -1,0 +1,18 @@
+from win32com.client import Dispatch
+
+结构：
+session-db-view/document(document 相当于邮件对象)
+
+Server=session.GetEnvironmentString( "MailServer",True)
+MaildbName=session.GetEnvironmentString( "MailFile",True)
+db=session.GetDatabase(Server,MaildbName)
+
+获取所有的views：
+db.views
+获取某个view：
+view = db.GetView("$Inbox")
+view下的邮件数量：
+view.entrycount
+获取邮件对象
+view.getFirstDocument() 获取最早的邮件
+view.getFirstDocument() 获取最晚的邮件

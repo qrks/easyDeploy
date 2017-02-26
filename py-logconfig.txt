@@ -1,0 +1,65 @@
+由于StreamHandler和FileHandler是常用的日志处理方式，所以直接包含在logging模块中，而其他方式则包含在logging.handlers模块中，
+上述其它处理方式的使用请参见python2.5手册！
+5.通过logging.config模块配置日志
+#logger.conf
+###############################################
+[loggers]
+keys=root,example01,example02
+[logger_root]
+level=DEBUG
+handlers=hand01,hand02
+[logger_example01]
+handlers=hand01,hand02
+qualname=example01
+propagate=0
+[logger_example02]
+handlers=hand01,hand03
+qualname=example02
+propagate=0
+###############################################
+[handlers]
+keys=hand01,hand02,hand03
+[handler_hand01]
+class=StreamHandler
+level=INFO
+formatter=form02
+args=(sys.stderr,)
+[handler_hand02]
+class=FileHandler
+level=DEBUG
+formatter=form01
+args=('myapp.log', 'a')
+[handler_hand03]
+class=handlers.RotatingFileHandler
+level=INFO
+formatter=form02
+args=('myapp.log', 'a', 10*1024*1024, 5)
+###############################################
+[formatters]
+keys=form01,form02
+[formatter_form01]
+format=%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s
+datefmt=%a, %d %b %Y %H:%M:%S
+[formatter_form02]
+format=%(name)-12s: %(levelname)-8s %(message)s
+datefmt=
+上例3：
+import logging
+import logging.config
+
+logging.config.fileConfig("logger.conf")
+logger = logging.getLogger("example01")
+
+logger.debug('This is debug message')
+logger.info('This is info message')
+logger.warning('This is warning message')
+上例4：
+import logging
+import logging.config
+
+logging.config.fileConfig("logger.conf")
+logger = logging.getLogger("example02")
+
+logger.debug('This is debug message')
+logger.info('This is info message')
+logger.warning('This is warning message')
