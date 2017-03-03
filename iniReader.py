@@ -6,7 +6,7 @@ import logging.config
 import ConfigParser
 
 
-logging.config.fileConfig("./logger.conf")
+logging.config.fileConfig("logger.conf")
 logger = logging.getLogger("logger01")
 
 def initConfiger(iniFile):
@@ -27,7 +27,7 @@ def getItems(cf, section, item):
         return None
     return ret
 
-
+#section下所有内容
 def getOptions(cf,option):
     try:
         options = cf.options(option)
@@ -64,15 +64,37 @@ def getActions(cf,keys):
 
     return retMap
             
+def test1():
+    filepath = './tmpData/map.ini'
+    cf = initConfiger(filepath)
+    #获取索引数字
+    index = getItems(cf,'SEQ','index')
+    print(index)
+    #索引增加1后，写回文件
+    cf.set('SEQ','index',int(index)+1)
+
+    #增加一个section
+    sections = getSecsions(cf)
+    if 'FILEINFO' not in sections:
+        cf.add_section('FILEINFO')
+
+    #有映射就读取，没有就设置
+    if getItems(cf,'FILEINFO','src1'):
+        print getItems(cf,'FILEINFO','src1')
+    else :
+        cf.set('FILEINFO','src1',index + index)
+
+    cf.write(open(filepath,'wb'))
+
 
 
 
 def main():
-    cf = initConfiger('./deploy.ini')
+    # cf = initConfiger('./deploy.ini')
 
     # print parse2Map(cf,'varset')
 
-    print getActions(cf,'')
+    # print getActions(cf,'')
 
     print '--------------'
     # print getSecsions(cf)
@@ -91,6 +113,8 @@ def main():
     #             value = getItems(cf,item,key)
     #             print '%s=%s' % (key,value)
 
+
+    test1()
 
 if __name__ == '__main__':
     main()

@@ -1,15 +1,17 @@
+# -*- coding: utf-8 -*-
 # encoding=utf-8
 import sys
 import ftplib
 import os
 import logging
 import logging.config
+import re
 
 __TYPE_FILE = 'FILE'
 __TYPE_DIR = 'DIR'
 __REMOTE_OS_SEP = '/'
 
-logging.config.fileConfig("./logger.conf")
+logging.config.fileConfig("logger.conf")
 logger = logging.getLogger("logger01")
 
 def ftpConnect(ip,port,user,pswd):
@@ -105,25 +107,21 @@ def uploadFile(ftp,localfile,remotedir='./'):
     ftp.storbinary('STOR ' + remotedir + filename,open(localfile,'rb'))
 
 
-
-#判断src是文件还是目录，是文件的话，解析出文件名
+'''
+#判断src是文件还是目录
+是文件的话，解析出文件名
+是目录的话，解析出最叶子的目录名
+'''
 def checkType(ftp,src):
     if os.path.isfile(src):
         src = removeEndstr(src)
         filename = os.path.split(src)[-1:][0]
         return __TYPE_FILE,filename
     elif os.path.isdir(src):
-        return __TYPE_DIR,''
+        src = removeEndstr(src)
+        dirname = os.path.split(src)[-1:][0]
+        return __TYPE_DIR,dirname
 
-
-def checkType_old(ftp,src):
-    if os.path.isfile(src):
-        index = src.rfind('\\')
-        if index == -1:
-            index = src.rfind(r'/')
-        return __TYPE_FILE,src[index+1:]
-    elif os.path.isdir(src):
-        return __TYPE_DIR,''
 
 
 '''
@@ -154,10 +152,12 @@ def downloadFile(ftp,remoteFile,localdir):
 
     logger.info('download file [%s] ...' %  remoteFile)
 
-    remote_dirFile = os.path.split(remoteFile)
+    # remote_dirFile = os.path.split(remoteFile)
     #split path and filename
-    remote_filename = remote_dirFile[-1:][0]
-    remote_dir = remote_dirFile[0:-1][0]
+    # remote_filename = remote_dirFile[-1:][0]
+    # remote_dir = remote_dirFile[0:-1][0]
+    remote_filename = os.path.basename(remoteFile)
+    remote_dir = os.path.dirname(remoteFile)
 
     ftp.cwd(remote_dir)
     # localdir = removeEndstr(localdir)
@@ -167,9 +167,9 @@ def downloadFile(ftp,remoteFile,localdir):
     print 'localdir=%s' % localdir
     #本地目录如果不存在，则建立
     if not os.path.isdir(localdir):
-        os.makedirs(localdir)
+        os.makedirs(localdir.decode('utf-8'))
     localdir = checkDirEndstr(localdir)
-    wFile = open(localdir + remote_filename,'wb')
+    wFile = open((localdir + remote_filename).decode('gbk'),'wb')
     ftp.retrbinary('RETR ' + remoteFile,wFile.write)
     wFile.close()
 
@@ -181,10 +181,13 @@ def downloadFile(ftp,remoteFile,localdir):
 等于在ftp客户端中，选中一个目录，下载下来
 '''
 def downloadDir(ftp,remotedir,localdir):
+
+    # print 'remotedir,localdir=%s,%s' % (remotedir.decode('gbk'),localdir.decode('gbk'))
+
     #目录尾部判断
     localdir = checkDirEndstr(localdir)
     
-    logger.debug('localdir,remotedir=%s,%s' % (localdir,remotedir))
+    # logger.debug('localdir,remotedir=%s,%s' % (localdir,remotedir))
 
     #去除目录结尾的'/'符号，不然split获取最后一个目录名时会有问题
     remotedir = removeEndstr(remotedir)
@@ -195,16 +198,17 @@ def downloadDir(ftp,remotedir,localdir):
 
     if not os.path.isdir(localPutInDir):
         logger.info('mkdir localPutInDir=%s' % localPutInDir)
-        os.makedirs(localPutInDir)
+        os.makedirs(localPutInDir.decode('gbk'))
 
 
     remotedir = checkDirEndstr(remotedir)
+
     ftp.cwd(remotedir)
     # nowRemotePath = ftp.pwd()
     linelist = []
     ftp.dir("",linelist.append)
     file_arr = get_file_list(linelist)
-    logger.debug('file_arr=%s' % file_arr)
+    # logger.debug('file_arr=%s' % file_arr)
     #TODO
     for remoteFile in file_arr:
         remoteFileType = remoteFile[0]
@@ -238,17 +242,18 @@ def checkRemoteIsDir(ftp,remote):
     #目录尾部判断
     remote = removeEndstr(remote)
     #先判断远端待下载的是文件还是目录
-    dirFile = os.path.split(remote)
+    # dirFile = os.path.split(remote)
     #split path and filename
-    filename = dirFile[-1:][0]
-    dir = dirFile[0:-1][0]
+    # filename = dirFile[-1:][0]
+    # dir = dirFile[0:-1][0]
 
     try:
         ftp.cwd(remote)
     except ftplib.error_perm,e:
         info = repr(e)
+        # logger.debug(info)
         # print info
-        if info.find('Failed to change directory') > 0:
+        if info.find('Failed to change directory') >= 0 or info.find('550') >= 0:
             #说明不是目录
             return __TYPE_FILE
 
@@ -256,14 +261,29 @@ def checkRemoteIsDir(ftp,remote):
     return __TYPE_DIR
 
 
+'''
 #tips：目录中不能共有空格
+line: 远端服务器 ls后的结果的每一行
+因为结果有9列，所以spilt 8次，这样最后的元素就是文件名
+'''
 def get_filename(line):
+    # line = line.strip()
+    datas = re.split('\s+',line,maxsplit=8)
+    # print 'pos=%s' % pos
+    # pos += 1
+    file_arr = [line[0],datas[-1]]  #fileType,fileName
+    # print 'get_filename return=%s' % file_arr
+    return file_arr
+
+
+def get_filename_old(line):
     pos = line.rfind(' ')
     # print 'pos=%s' % pos
     pos += 1
     file_arr = [line[0],line[pos:]]  #fileType,fileName
     # print 'get_filename return=%s' % file_arr
     return file_arr
+
 
 def get_file_list(linelist):
     ret_arr = []
@@ -331,9 +351,30 @@ def test1():
         ftp = ftpConnect('107.6.61.79',21,'maps','maps')
         # ftp = ftpConnect('107.6.61.103',21,'gtcg','gtcg')
         ftp.getwelcome()
+        print ftp.sendcmd('SYST')
+
+        # print ftp.cwd('/bak/pj/')
+        # print ftp.dir()
+        # print ('----------------------')
+        # linelist = []
+        # ftp.dir("",linelist.append)
+
+        # print linelist
+        # l = list()
+
+        # for item in linelist:
+            # print item
+
+        # print ftp.retrlines('LIST')
+
+
         # print ftp.pwd()
         # print ftp.dir()
         # ftp.dir() 
+        # ftp.cwd('/bak/')
+        # linelist = []
+        # ftp.dir("",linelist.append)
+        # print 'linelist=%s' % linelist
         # fileUpolad = open('D:/sync2.log','rb')
         
         # upload(ftp,'D:/ImageTest','/home/wasup/tmp')
@@ -347,11 +388,18 @@ def test1():
 
 
         # print checkType('D:/tmp/')
-        # download(ftp,'/bak/move/','D:/tmp/')
+
+        # download(ftp,'/bak/pj/我/pj/代码版本/','D:/tmp')
+
+        # download(ftp,u'/bak/pj/\xe4\xbb\xa3\xe7\xa0\x81\xe7\x89\x88\xe6\x9c\xac/run1/readme.txt'.encode('gbk'),'D:/tmp')
+        # download(ftp,'/bak/pj/test/','D:/tmp')
+        
+        # download(ftp,u'/bak/pj/2222.txt','D:/tmp')
+        
         # download(ftp,'/bak/notes.txt','D:/tmp/')
         # download(ftp,'/bak/move','D:/tmp')
 
-        download(ftp,'/home/gtcg/GTCGProcessor/application/CITEICBC/CTBSH/trades/9998','D:/tmp2')
+        # download(ftp,'/home/gtcg/GTCGProcessor/application/CITEICBC/CTBSH/trades/9998','D:/tmp2')
         # download(ftp,'/home/gtcg/GTCGProcessor/application/CITEICBC/CTBSH/trades/9998/message/BICE_TO_CITE.xml','D:/tmp2')
 
         # print os.path.split('/home/gtcg/GTCGProcessor/application/CITEICBC/CTBSH/trades/9998/message/BICE_TO_CITE.xml')
@@ -362,6 +410,39 @@ def test1():
         ftpQuit(ftp)
 
 
+#判断是否是子目录
+def isChildDir(child_dir,p_dir):
+    child_dir = os.path.normpath(child_dir)
+    p_dir = os.path.normpath(p_dir)
+
+    child_dir = removeEndstr(child_dir)
+    p_dir = removeEndstr(p_dir)
+
+    # print 'p_dir=%s' % p_dir
+
+    now_dir = child_dir
+    times = 0
+    while True:
+        if times >= 20:
+            break
+        times += 1
+        head_dir = os.path.dirname(now_dir)
+        # print 'head_dir = %s' % head_dir
+        if head_dir == now_dir:  #解析到根目录了
+            # print 'not match!'
+            # print 'head_dir=%s,now_dir=%s' % (head_dir,now_dir)
+            return False
+            break
+        if head_dir == p_dir:
+            # print 'head_dir=%s,p_dir=%s' % (head_dir,p_dir)
+            # print 'match! head_dir=%s' % head_dir
+            return True
+            break
+        now_dir = head_dir
+
+
+
+
 def test2():
     try:
         # ftp = ftpConnect('107.6.61.103',21,'gtcg','gtcg')
@@ -370,17 +451,19 @@ def test2():
 
         # upload(ftp,'E:\CTP Developer\ide\workspace\G1S1_YFFK_web\WebContent\WEB-INF\classes\com\icbc\cosp\yffk','/bak/tmp2017')
         # upload(ftp,'E:\CTP Developer\ide\workspace\G1S1_YFFK_web\WebContent\WEB-INF\config\contributions','/bak/tmp2017')
-        uploadFile(ftp,r'E:\CTP Developer\ide\workspace\G1S1_YFFK_web\WebContent\WEB-INF\config\contributions\yffk\opg\t81113.opg',r'/bak/tmp2017/tmp')
+        # uploadFile(ftp,r'E:\CTP Developer\ide\workspace\G1S1_YFFK_web\WebContent\WEB-INF\config\contributions\yffk\opg\t81113.opg',r'/bak/tmp2017/tmp')
         
-        
+        uploadFile(ftp,r'E:\CTP Developer\ide\workspace\G1S1_YFFK_web\WebContent\WEB-INF\classes\com\icbc\cosp\yffk\trx\T81108B.class',r'/bak/tmp2017/yffk\trx')
+
 
     finally:
         ftpQuit(ftp)
 
 
 def main():
-    # test1()
-    test2()
+    test1()
+    # test2()
+    # isChildDir('E:/aaa/bbb/ccc/ddd/eee/fff/ggg.txt','E:/aac/fhdfh/sadg/ah/')
 
     print 'done'
     pass
