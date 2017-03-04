@@ -22,7 +22,14 @@ python -u deploy.py ${any_path}/deploy.ini
     user：登录用户名
     pswd：登录密码
     
-	[sys]: todo:在这里定义的action才会执行
+    [ddl:XXXXXX]: 定义数据库信息和需要获取的数据结构
+    hostip=ip地址
+    user=服务器用户名
+    pswd=服务器用户名的密码
+    db_user=数据库实例用户名
+    db_pswd=数据库实例密码
+    db_service_name=数据库serviceName
+    [sys]: todo:在这里定义的action才会执行
 
 ### tips:
     目录路径以'/'or'\'结尾
